@@ -1,0 +1,696 @@
+// Indiana State Library - holds notification dialer
+// Niles Ingalls 
+
+// NOTE:
+// add Set(GROUP()=outgoing_hold)
+// to any part of the dialplan making outgoing, or receiving incoming calls.
+// 
+
+
+globals {
+	OUTBOUND-TRUNK=DAHDI/g1;
+	OUTBOUND-TRUNKMSD=1;
+	CALLERID_NAME = "Evergreen Indiana";
+	CALLERID_NUM = <3172021220>;
+	// alternate CID's. You can omit one for the default CID
+	CALLERID_317 = <3172021220>;	
+	CALLERID_219 = <2192320137>;
+	CALLERID_260 = <2604403355>;
+	CALLERID_574 = <5745382030>;
+	CALLERID_765 = <7655885982>;
+
+	MSG_REPEAT = 4;
+	CALLBACK-TIMEFRAME=1800;	// time in seconds that the system recognizes a user that left
+								// or was invited in a support call.
+	ASTERISK_VERSION=1.6;		// 1.2 or 1.4 (>=)
+								// 1800 represents 30 minutes. (a good default)
+	RECORD_PROMPTS=1;			// set to 1, if you want to record new prompts.
+								// WARNING: This DISABLES the system.
+}
+
+context trunkld {
+        _91NXXNXXXXXX => {
+                &didmap();
+                NoOp(${CALLERID(all)});
+                Dial(${OUTBOUND-TRUNK}/${EXTEN:${OUTBOUND-TRUNKMSD}});
+        };
+};
+
+context trunk-local {
+        _9NXXXXXX => {
+                &didmap();
+                NoOp(${CALLERID(all)});
+                Dial(${OUTBOUND-TRUNK}/${EXTEN:${OUTBOUND-TRUNKMSD}});
+        };
+        _9N317XXXXXX => {
+                &didmap();
+                NoOp(${CALLERID(all)});
+                Dial(${OUTBOUND-TRUNK}/${EXTEN:${OUTBOUND-TRUNKMSD}});
+        };
+};
+
+context trunktollfree {
+        _91800NXXXXXX => Dial(${OUTBOUND-TRUNK}/${EXTEN:${OUTBOUND-TRUNKMSD}});
+        _91888NXXXXXX => Dial(${OUTBOUND-TRUNK}/${EXTEN:${OUTBOUND-TRUNKMSD}});
+        _91877NXXXXXX => Dial(${OUTBOUND-TRUNK}/${EXTEN:${OUTBOUND-TRUNKMSD}});
+        _91866NXXXXXX => Dial(${OUTBOUND-TRUNK}/${EXTEN:${OUTBOUND-TRUNKMSD}});
+};
+
+context local-ael {
+	ignorepat => 9;
+	includes {
+		default;
+		trunk-local;
+		trunkld;
+		trunktollfree;
+	};
+};
+
+
+context default {
+
+	3172021230 => Dial(SIP/3172021230,30);
+//	3172021221/3179689239 => goto incoming_dev|${EXTEN}|begin; // incoming test line for dev server.
+//	3172021222/3179689239 => goto support|s|begin;
+//	3172021221/3179689239 => goto incoming|${EXTEN}|begin;
+	3172021221/3179689239 => goto incoming|3172021220|begin;
+
+	3172021222 => {
+// set org user count
+//		Record(en/eg/system/thankyoufromthestaffat:wav);
+//		Playback(eg/system/thankyoufromthestaffat);
+//		Hangup();
+		Set(org=4);
+		Set(count=2);
+		Set(user=26437);
+//		&hold_playback_new();
+		Hangup();
+	}
+
+//	_XXXXXXXXXX/3179689239 => goto incoming|${EXTEN}|begin; 
+
+        _XXXXXXXXXX => goto incoming|${EXTEN}|begin;
+
+
+// move call_holds into the hold_notification context, and then edit call_holds.php
+	call_holds => {
+
+hold_notify:
+
+	Answer();
+	Set(GROUP()=outgoing_hold);
+	&call_ceiling();
+
+//	AGI(eg/log_patron.php,${id},1);
+	AGI(eg/log_patron.php,${user},${phone},${card},${date},${org},${count},${attempts},${id});
+	Set(DB(patron/${user})=${phone},${card},${date},${org},${count},${attempts},${id});
+	&hold_playback();		
+	Hangup();
+	}
+
+	h => Hangup();
+}
+
+
+context hold_notification {
+
+        _XXXXXXXXXX => {
+s:
+        Set(CALLERID(all)=${CALLERID_NAME} ${CALLERID_NUM}); // set default CID
+        Set(old_notify=${user},${DB_DELETE(${purge_db}/${user})});
+        Set(CDR(userfield)=${user});
+        // alter outgoing CID if patron is in another area code
+        if ( $[${EXISTS(${CALLERID_${outbound:-10:3}}) }] ) Set(CALLERID(all)=${CALLERID_NAME} ${CALLERID_${outbound:-10:3}} );
+        Dial(${outbound});
+        Hangup();
+        }
+        h => {
+        if ( "${DIALSTATUS}" != "ANSWER" ) &requeue();
+        }
+
+}
+
+
+context incoming {
+
+	_XXXXXXXXXX => {
+begin:
+	Answer();
+	Set(TIMEOUT(digit)=1);
+	Set(INCOMING=${EXTEN});
+	Wait(1);
+
+		if ( $[${EXISTS(${CALLERID_${EXTEN:-10:3}}) }] ) {
+
+			if ( ${EXTEN}==${CALLERID_${EXTEN:-10:3}:-11:10} ) {
+
+			        Answer();
+				Set(GROUP()=outgoing_hold); 			// prevent outgoing holds from attempting to use this channel
+				Ringing(); 					// Induce ringing, so our incoming_eg script can run in the "background"	
+			        AGI(eg/incoming_eg.php,${CALLERID(num)});
+
+				Playback(en/eg/system/incoming_youhavereached);
+					if ( ${incoming_userid} ) {
+						Playback(en/eg/system/incoming_wehaveidentifiedyouas);
+						Playback(en/eg/users/${incoming_userid});
+					}
+				Playback(en/eg/system/incoming_telephoneandemailnotifications);
+				Background(en/eg/system/incoming_ifyouarenotanevergreenlibrarymember); 								// if user enters 9, we get moving
+				WaitExten(5);
+
+				Playback(en/eg/system/incoming_goodbye);
+				Hangup();
+
+			}
+
+		}
+
+        }
+
+	9 => {
+		if (${incoming_userid}) {
+			// need some digits here.
+			SayDigits(${CALLERID(num)});
+			Playback(en/eg/system/incoming_iisassociatedwithanevergreenaccount);
+			AGI(eg/incoming_notify_admin.php,${incoming_userid},${incoming_card},${CALLERID(num)},${incoming_email});       // notify admin to remove phone from this account
+		} else {
+			Playback(en/eg/system/incoming_pleaseleaveamessageafterthetone);
+			Voicemail(1234,s);
+		}
+
+		Playback(en/eg/system/incoming_goodbye);
+		Hangup();
+
+	}
+
+	t => {
+		Playback(en/eg/system/incoming_goodgye);
+		Hangup();
+	}
+
+	i => {
+		// you have selected an invalid key
+		goto incoming|${INCOMING}|begin;
+	}
+
+	h => Hangup();
+}
+
+
+context incoming_dev {
+
+        3172021221 => { // incoming test line for dev server.
+begin:
+
+                if ( ${CALLERID(name)} = "DEV" ) {
+
+			goto support|s|begin;
+               		Hangup(); 
+
+                } else {
+
+                        Set(CALLERID(name)="DEV");
+                        Dial(DAHDI/g2/${EXTEN});
+                        Hangup();
+
+		}
+
+        }
+
+}
+
+
+context passthru {
+
+	_. => {
+
+		Dial(DAHDI/G1/${EXTEN},,);
+		Hangup();
+
+	}
+
+}
+
+context callback {
+        s => {
+intro:
+                Background(en/support/identified_a);  // we have identified you as
+                SayDigits(${CALLERID(num)});       // (callerid)
+                for (x=0; ${x} < 2; x=${x} + 1) {
+                        Background(en/support/identified_b); // if this is your callback #, press 1. otherwise, press 9.
+                        WaitExten(5);
+                }
+                Set(callback=${CALLERID(num)});
+                goto non-critical-notify|s|notify;
+        }
+        1 => {
+                        Set(callback=${CALLERID(num)});
+                        goto non-critical-notify|s|notify;
+        }
+
+        9 => {
+                        goto callback-identify|s|identify;
+                 }
+        t => {
+                Playback(en/support/goodbye);
+                goto h|1;
+                }
+        h => Hangup();
+        i => {
+        Playback(en/support/invalid);
+        goto s|intro;
+        }
+}
+
+
+context callback-identify {
+        s => {
+identify:
+                        &callback-identify-macro();
+                        NoOp(${callback});
+                        goto non-critical-notify|s|notify;
+        }
+        1 => goto non-critical-notify|s|notify;
+        9 => goto s|identify;
+        t => {
+                Playback(en/support/goodbye);
+                goto h|1;
+                }
+        h => Hangup();
+        i => {
+        Playback(en/support/invalid);
+        goto s|identify;
+        }
+}
+
+context autodial {
+        s => {
+        Set(DB(critical/${cid})=${room}-${tmpaudio:-10}); //verify this
+        for (x=0; ${x} < 3; x=${x} + 1) {
+                Background(${tmpaudio});
+                Background(en/support/screen);
+        }
+        Background(en/support/goodbye);
+        Hangup();
+        }
+        _X => &conference_room(${room});
+}
+
+
+context support {
+
+	s => {
+		begin:
+
+	        Wait(1);
+	        Answer();
+	        Set(TIMEOUT(digit)=5);
+	        Set(TIMEOUT(response)=10);
+
+	        // find out if person left/was_invited into a conference room.
+	        // if so, give them the opportunity to join/re-join
+
+	        Set(areyoufamiliar=${DB_EXISTS(critical/${CALLERID(number)})});
+
+	        if ( ${areyoufamiliar} ) {
+
+                        // determine how long ago they joined or were invited to join conference room
+
+                        Set(seen=${MATH(${EPOCH}-${CUT(DB_RESULT,-,2)},int)});
+
+                        if ( ${seen} < ${CALLBACK-TIMEFRAME} ) {
+
+                                goto youarefamiliar|s|begin;
+
+                        } else {
+       
+	                         // seen more than CALLBACK-TIMEFRAME seconds ago. do some cleanup
+                                &db_cleanup(critical);
+
+                        }
+
+		}
+
+		welcome:
+
+		for (x=0; ${x} < 3; x=${x} + 1) {
+			background(en/support/intro); // press 9 for non-critical issue, 0 for immediate assistance
+	                WaitExten(5);
+	        }
+
+                Playback(en/support/goodbye); // caller is asleep.
+                Hangup();
+        }
+
+
+        0 => goto critical|s|setchannel;
+        9 => goto non-critical|s|intro;
+        t => {
+                Playback(en/support/goodbye);
+                goto h|1;
+        }
+        h => Hangup();
+        i => {
+        Playback(en/support/invalid);
+        goto s|welcome;
+	}
+	h => Hangup();
+
+}
+
+context critical {
+        s => {
+setchannel:
+                // TO DO: Have a macro determine if there are any on-going conference calls.
+                // IF SO, inform the user that the support staff is working with another caller,
+                // and invite them to leave a "non-critical" message to be called back.
+                //
+                // *another TO DO, when a page comes into the system, have it scan for multiple rooms.
+                // sent caller to the invited room, but invite them to choose a different conference room.*
+
+
+                // determine conference room.  in order to avoid collision in the event of multiple calls,
+                // use callers channel to define conference room. (1-23) If we cannot come to a determination
+                // for some reason, fall back to default conference room. (0)
+                // this should only happen if you're using a SIP/IAX trunk.
+
+                Set(chan=${CUT(CUT(CHANNEL,-,1),/,2)});
+                Set(tmpaudio=page${EPOCH});
+                if ( ${LEN(${chan})} >= 3 ) Set(chan=0);
+
+                // UNTESTED: if you're using 1.4 and using a SIP/IAX trunk, you can do the following
+                // to place the caller into an un-used conference room.
+                //If ($[$[${LEN(${chan})}] >= 3]) {
+                //      Set(chan=${Rand(0,23)});
+                //      MeetMeCount(${chan}|count);
+                //      if ( $[$[${count}] > 0] ) goto s|setchannel;
+                //}
+intro:
+
+// none of my GotoIfTime's are working below. This works in 1.4, not sure what the heck is up.
+// ael changed ALOT between 1.4 and 1.6. oh well. - niles
+
+//              goto daytime|8:30-16:30|mon-fri|*|*;
+//              GotoIfTime(8:30-16:30|mon-fri|*|*?daytime);
+//              GotoIfTime(16:30-21:00|mon-fri|*|*?nighttime);
+//              GotoIfTime(9:30-21:00|sat-sun|*|*?nighttime);
+
+closed:
+                Playback(support/notavailable);
+                goto non-critical|s|intro;
+daytime:
+                Set(pagetime=daytime);
+                goto critical|s|cont;
+nighttime:
+                Set(pagetime=nighttime);
+cont:
+                Background(support/leavedescription); // at the tone, leave a description and press pound
+                Record(${tmpaudio}:wav);
+                // Let's send out e-mail with this information.
+                Set(DB(critical/${CALLERID(number)})=${chan}-${tmpaudio:-10});
+                AGI(support/ei_page.sh|${tmpaudio}|${chan}|${pagetime});
+
+                Playback(support/entering_critical_conf);
+reroute:
+                &conference_room(${chan});
+                Hangup();
+        }
+        9 => {
+                // play a recording, telling them that they are being routed to non-critical, and to press 0 to get back into the room.
+                Background(support/leavingcritical_noncritical);
+                WaitExten(5);
+                goto non-critical|s|intro;
+                }
+        0 => goto s|reroute;
+        t => {
+                Playback(support/goodbye);
+                goto h|1;
+                }
+        h => Hangup();
+        i => {
+        Playback(support/invalid);
+        goto s|intro;
+        }
+}
+
+
+context non-critical {
+        s => {
+                Wait(1);
+intro:
+                Background(en/support/callback); // if you require a callback press 1, otherwise press 9
+                WaitExten(10);
+                Set(tmpaudio=page${EPOCH});
+record:
+                Record(${tmpaudio}:wav);
+        }
+
+        1 => goto callback|s|intro;
+        9 => goto non-critical-notify|s|notify;
+        t => {
+                Playback(en/support/goodbye);
+                goto h|1;
+                }
+        h => Hangup();
+        i => {
+        Playback(en/support/invalid);
+        goto s|intro;
+        }
+}
+
+context non-critical-notify { // record the message, broadcast it to support staff.
+        s => {
+notify:
+                Playback(en/support/leave_a_message);
+                Record(support%d.wav);
+                NoOp(${RECORDED_FILE});
+ifyouaresatisfied:
+                for (x=0; ${x} < 2; x=${x} + 1) {
+                        Background(support/r_u_satisfied);
+                        WaitExten(5);
+                }
+                goto non-critical-notify|1|fireaway;
+        }
+        1 => {
+fireaway:
+                Set(support_file=${RECORDED_FILE});
+                playback(en/support/thankyou_noncritical);
+                Playback(en/support/goodbye);
+                Hangup();
+        }
+        2 => {
+                playback(${RECORDED_FILE});
+                WaitExten(1);
+                goto s|ifyouaresatisfied;
+        }
+        3 => goto s|notify;
+        t => {
+                if ( ${RECORD_PROMPTS} ) goto non-critical-notify|1|fireaway;
+                Playback(en/support/goodbye);
+                goto h|1;
+                }
+        h => {
+                AGI(support/ei_support.sh,${support_file},${callback}); //${RECORDED_FILE} gets destroyed on hangup. passing data via a temp variable.
+                Hangup();
+        }
+        i => {
+        Playback(en/support/invalid);
+        goto s|notify;
+        }
+}
+
+
+context youarefamiliar {
+
+        s => {
+begin:
+                Wait(1);
+                for (x=0; ${x} < 2; x=${x} + 1) {
+                        Background(en/support/youarefamiliar); // press 1 to join call, or any other key to continue
+                        WaitExten(5);
+                }
+                // caller is asleep. do some cleanup and continue
+                &db_cleanup(critical);
+                goto support|s|welcome;
+        }
+        fixthis1 => { // take user into their conference room
+                Set(room=${CUT(DB_RESULT,-,1)});
+                &conference_room(${room});
+                Hangup();
+        }
+        _[2-90*#] => {
+                &db_cleanup(critical);
+                goto support|s|welcome; // any other key
+        }
+        t => {
+                // caller is asleep. do some cleanup and continue
+                &db_cleanup(critical);
+                goto support|s|welcome;
+        }
+        i => {
+                // do some cleanup and continue
+                &db_cleanup(critical);
+                goto support|s|welcome;
+        }
+        h => Hangup();
+}
+
+
+macro call_ceiling() { // if there are more calls than channels, we bow out.
+
+	if ( ${total_channels} < ${GROUP_COUNT()} ) {
+
+		NoOp(Call Ceiling Breached, Terminating call);
+		Hangup();
+
+	}
+
+	return;
+
+}
+
+macro hold_playback() {
+
+        for (x=0; ${x} < ${MSG_REPEAT}; x=${x} + 1) { // play 4 times for answering machines
+                Answer();
+//                Playback(eg/system/thisisanautomatedcallfrom);
+		Playback(eg/system/thisisanautomatedcallfromthe);
+                Set(org_exists=${DB_EXISTS(org_unit/${org})});
+
+                if ( ${org_exists} ) {
+
+                        Playback(eg/library/${org});
+
+                 } else {
+
+                        Playback(eg/library/0);
+
+                 }
+
+//                Playback(eg/system/intendedfor);
+		Playback(eg/system/for);
+                Playback(eg/users/${user});
+
+                if ( ${count} > 1 ) {
+
+//                        Playback(eg/system/informingyouplural);
+			Playback(eg/system/pleasepickupyourrequestedlibraryitemwithin7days);
+                } else {
+
+//                        Playback(eg/system/informingyousingular);
+			Playback(eg/system/pleasepickupyourrequestedlibraryitemswithin7days);
+
+                }
+
+		Playback(eg/system/thankyoufromthestaffat);
+                if ( ${org_exists} ) {
+
+                        Playback(eg/library/${org});
+
+                 } else {
+
+                        Playback(eg/library/0);
+
+                 }
+
+                if ( ${x} < ${MSG_REPEAT} ) wait(1);
+
+        }
+
+
+        return;
+
+}
+
+
+macro hold_playback_old() {
+
+        for (x=0; ${x} < ${MSG_REPEAT}; x=${x} + 1) { // play 4 times for answering machines
+		Answer();
+                Playback(eg/system/thisisanautomatedcallfrom);
+
+        	Set(org_exists=${DB_EXISTS(org_unit/${org})});
+
+	        if ( ${org_exists} ) {
+
+			Playback(eg/library/${org});
+       
+	         } else {
+
+			Playback(eg/library/0);
+       
+	         }
+
+                Playback(eg/system/intendedfor);
+                Playback(eg/users/${user});
+
+		if ( ${count} > 1 ) {
+			
+			Playback(eg/system/informingyouplural);
+
+		} else {
+
+			Playback(eg/system/informingyousingular);
+
+		}
+
+		if ( ${x} < ${MSG_REPEAT} ) wait(6);
+
+	}
+
+
+	return;
+
+}
+
+
+macro requeue() {
+
+        Set(DB(hold_notify_failed/${user})=${phone},${card},${date},${org},${count},${attempts},${id});
+        return;
+}
+
+macro db_cleanup( key ) {
+        if ( $[${ASTERISK_VERSION} = 1.2] ) {
+                DBdel(${key}/${CALLERID(num)});
+        } else {
+                NoOp(${DB_DELETE(${key}/${CALLERID(num)})});
+        };
+};
+
+macro didmap() {
+NoOp(${CALLERID(num)});
+        switch(${CALLERID(num)}) {
+                case 2000:
+                        Set(CALLERID(all)="Evergreen Indiana" <3172021230>);
+                        break;
+                default:
+                        Set(CALLERID(all)="Evergreen Indiana" <3172021230>);
+        };
+
+        return;
+
+// available DID's
+// 2192320137
+// 2604403355
+// 3172021218
+// 3172021219
+// 3172021220
+// 3172021221
+// 3172021222
+// 3172021223
+// 3172021224
+// 3172021225
+// 3172021226
+// 3172021227
+// 3172021228
+// 3172021229
+// 3172021230
+// 3172021231
+// 3172021232
+// 3172021233
+// 3172021234
+// 3172021235
+// 5745382030
+// 7655885982
+};

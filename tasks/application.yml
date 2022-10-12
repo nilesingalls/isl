@@ -1,0 +1,141 @@
+---
+- name: Clone Dahdi Linux
+  git:
+    repo: 'https://github.com/asterisk/dahdi-linux.git'
+    version: '{{ dahdi-linux_version }}'
+    dest: '/usr/src/dahdi-linux'
+  become: yes
+
+- name: Install Dahdi Linux 
+  shell: |
+    make
+    make install
+  chdir: /usr/src/dahdi-linux
+  become: yes
+
+- name: move dahdi init into init.d
+  synchronize:
+    src: /usr/src/dahdi-tools/dahdi.init
+    dest: /etc/init.d/dahdi
+
+- name: enable dahdi
+  service:
+    name: dahdi
+    state: stopped
+    enabled: yes
+
+- name: Clone Dahdi Tools
+  git:
+    repo: 'https://github.com/asterisk/dahdi-tools.git'
+    version: '{{ dahdi-tools_version }}'
+    dest: '/usr/src/dahdi-tools'
+  become: yes
+
+- name: generate the configure script and Makefiles
+  shell: |
+    autoreconf -i
+    configure
+    make
+    make install
+  chdir: '/usr/src/dahdi-tools'
+  become: yes
+
+- name: Clone libpri
+  git:
+    repo: 'https://gerrit.asterisk.org/libpri'
+    version: '{{ libpri_version }}'
+    dest: '/usr/src/libpri'
+  become: yes
+
+- name: Install libpri
+  shell: |
+    make
+    make install
+  chdir: /usr/src/libpri
+  become: yes
+
+- name: Clone starpy
+  git:
+    repo: 'https://gerrit.asterisk.org/starpy'
+    version: '{{ starpy_version }}'
+    dest: '/usr/src/starpy'
+  become: yes
+
+- name: Clone jansson
+  git:
+    repo: 'https://github.com/akheron/jansson.git'
+    version: '{{ jansson_version }}'
+    dest: '/usr/src/jansson'
+  become: yes
+
+- name: Install jansson
+  shell: |
+    autoreconf -i
+    configure
+    make
+    make install
+  chdir: /usr/src/jansson
+  become: yes
+
+- name: Clone Asterisk
+  git:
+    repo: 'https://gerrit.asterisk.org/asterisk'
+    version: '{{ asterisk_version }}'
+    dest: '/usr/src/asterisk'
+  become: yes
+
+- name: Install prereq
+  shell: |
+    install_prereq install
+  chdir: /usr/src/asterisk/contrib/scripts
+  become: yes
+
+- name: Install Asterisk
+  shell: |
+    configure
+    make
+    make install
+    make samples
+  chdir: /usr/src/asterisk
+  become: yes
+
+- name: asterisk file permissions
+  file:
+    dest: "{{ dest }}"
+    owner: "{{ asterisk_user }}"
+    group: "{{ asterisk_group }}"
+    recurse: yes
+  loop:
+    - { dest: '/var/lib/asterisk' }
+    - { dest: '/var/spool/asterisk' }
+    - { dest: '/var/log/asterisk' }
+    - { dest: '/var/run/asterisk' }
+    - { dest: '/dev/dahdi' }
+
+- name: move asterisk service file
+  synchronize:
+    src: /usr/src/asterisk/contrib/systemd/asterisk.service
+    dest: /etc/systemd/system/
+
+- name: enable asterisk
+  service:
+    name: asterisk
+    state: stopped
+    enabled: yes
+
+- name: move application files
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  loop:
+    - { src: 'templates/asterisk.conf', dest: '/etc/asterisk/asterisk.conf' }
+    - { src: 'templates/cdr_pgsql.conf', dest: '/etc/asterisk/cdr_pgsql.conf' }
+    - { src: 'templates/chan_dahdi.conf', dest: '/etc/asterisk/chan_dahdi.conf' }
+    - { src: 'templates/extensions.ael', dest: '/etc/asterisk/extensions.ael' }
+    - { src: 'templates/extensions.conf', dest: '/etc/asterisk/extensions.conf' }
+    - { src: 'templates/manager.conf', dest: '/etc/asterisk/manager.conf' }
+
+- name: disable selinux
+  selinux:
+    state: disabled
+  when: selinux|default(false)|bool == false

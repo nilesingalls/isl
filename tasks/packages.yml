@@ -1,0 +1,30 @@
+---
+- name: Asterisk Dependencies
+  dnf:
+    name: "{{ packages }}"
+    state: latest
+  vars:
+    packages:
+    - '@Development tools'
+    - jq
+    - lynx
+    - mailx
+    - screen
+    - net-tools
+    - kernel
+    - kernel-core
+    - kernel-devel
+    - kernel-doc
+    - kernel-headers
+    - kernel-modules
+    - kernel-modules-extra
+    - kernel-tools
+    - kernel-tools-libs
+    - kernel-tools-libs-devel
+    - libpq-devel
+    - libedit-devel
+    - libuuid-devel
+    - libxml2-devel
+    - sqlite-devel
+    - systemd-devel
+  enablerepo: powertools
