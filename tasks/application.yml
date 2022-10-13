@@ -39,7 +39,7 @@
 - name: enable dahdi
   service:
     name: dahdi
-    state: stopped
+    state: started
     enabled: yes
 
 - name: Clone libpri
