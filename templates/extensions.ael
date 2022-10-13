@@ -22,7 +22,6 @@ globals {
 	MSG_REPEAT = 4;
 	CALLBACK-TIMEFRAME=1800;	// time in seconds that the system recognizes a user that left
 								// or was invited in a support call.
-	ASTERISK_VERSION=1.6;		// 1.2 or 1.4 (>=)
 								// 1800 represents 30 minutes. (a good default)
 	RECORD_PROMPTS=1;			// set to 1, if you want to record new prompts.
 								// WARNING: This DISABLES the system.
@@ -120,7 +119,7 @@ s:
         Set(old_notify=${user},${DB_DELETE(${purge_db}/${user})});
         Set(CDR(userfield)=${user});
         // alter outgoing CID if patron is in another area code
-        if ( $[${EXISTS(${CALLERID_${outbound:-10:3}}) }] ) Set(CALLERID(all)=${CALLERID_NAME} ${CALLERID_${outbound:-10:3}} );
+        if ( ${EXISTS(${CALLERID_${outbound:-10:3}}) } ) Set(CALLERID(all)=${CALLERID_NAME} ${CALLERID_${outbound:-10:3}} );
         Dial(${outbound});
         Hangup();
         }
@@ -140,7 +139,7 @@ begin:
 	Set(INCOMING=${EXTEN});
 	Wait(1);
 
-		if ( $[${EXISTS(${CALLERID_${EXTEN:-10:3}}) }] ) {
+		if ( ${EXISTS(${CALLERID_${EXTEN:-10:3}}) } ) {
 
 			if ( ${EXTEN}==${CALLERID_${EXTEN:-10:3}:-11:10} ) {
 
@@ -354,8 +353,6 @@ context support {
         Playback(en/support/invalid);
         goto s|welcome;
 	}
-	h => Hangup();
-
 }
 
 context critical {
@@ -513,11 +510,6 @@ begin:
                 &db_cleanup(critical);
                 goto support|s|welcome;
         }
-        fixthis1 => { // take user into their conference room
-                Set(room=${CUT(DB_RESULT,-,1)});
-                &conference_room(${room});
-                Hangup();
-        }
         _[2-90*#] => {
                 &db_cleanup(critical);
                 goto support|s|welcome; // any other key
@@ -651,11 +643,8 @@ macro requeue() {
 }
 
 macro db_cleanup( key ) {
-        if ( $[${ASTERISK_VERSION} = 1.2] ) {
-                DBdel(${key}/${CALLERID(num)});
-        } else {
-                NoOp(${DB_DELETE(${key}/${CALLERID(num)})});
-        };
+        NoOp(${DB_DELETE(${key}/${CALLERID(num)})});
+	return;
 };
 
 macro didmap() {

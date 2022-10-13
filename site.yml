@@ -1,4 +1,4 @@
-- hosts: any
+- hosts: localhost
   any_errors_fatal: true
 
   roles:
@@ -10,8 +10,8 @@
     selinux: false
     asterisk_user: asterisk
     asterisk_group: asterisk
-    dahdi-linux_version: v3.2.0
-    dahdi-tools_version: v3.2.0
+    dahdi_linux_version: v3.2.0
+    dahdi_tools_version: v3.2.0
     libpri_version: 1.6.0
     starpy_version: 1.0.3
     jansson_version: v2.14
@@ -69,3 +69,9 @@
   tasks:
     - import_tasks: tasks/packages.yml
     - import_tasks: tasks/application.yml
+
+  post_tasks:
+    - name: remove cloud-init
+      dnf:
+        name: cloud-init
+        state: absent

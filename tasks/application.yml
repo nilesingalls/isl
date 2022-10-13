@@ -2,7 +2,7 @@
 - name: Clone Dahdi Linux
   git:
     repo: 'https://github.com/asterisk/dahdi-linux.git'
-    version: '{{ dahdi-linux_version }}'
+    version: '{{ dahdi_linux_version }}'
     dest: '/usr/src/dahdi-linux'
   become: yes
 
@@ -10,7 +10,25 @@
   shell: |
     make
     make install
-  chdir: /usr/src/dahdi-linux
+  args:
+    chdir: /usr/src/dahdi-linux
+  become: yes
+
+- name: Clone Dahdi Tools
+  git:
+    repo: 'https://github.com/asterisk/dahdi-tools.git'
+    version: '{{ dahdi_tools_version }}'
+    dest: '/usr/src/dahdi-tools'
+  become: yes
+
+- name: generate the configure script and Makefiles
+  shell: |
+    autoreconf -i
+    ./configure
+    make
+    make install
+  args:
+    chdir: '/usr/src/dahdi-tools'
   become: yes
 
 - name: move dahdi init into init.d
@@ -24,22 +42,6 @@
     state: stopped
     enabled: yes
 
-- name: Clone Dahdi Tools
-  git:
-    repo: 'https://github.com/asterisk/dahdi-tools.git'
-    version: '{{ dahdi-tools_version }}'
-    dest: '/usr/src/dahdi-tools'
-  become: yes
-
-- name: generate the configure script and Makefiles
-  shell: |
-    autoreconf -i
-    configure
-    make
-    make install
-  chdir: '/usr/src/dahdi-tools'
-  become: yes
-
 - name: Clone libpri
   git:
     repo: 'https://gerrit.asterisk.org/libpri'
@@ -51,7 +53,8 @@
   shell: |
     make
     make install
-  chdir: /usr/src/libpri
+  args:
+    chdir: /usr/src/libpri
   become: yes
 
 - name: Clone starpy
@@ -71,10 +74,11 @@
 - name: Install jansson
   shell: |
     autoreconf -i
-    configure
+    ./configure
     make
     make install
-  chdir: /usr/src/jansson
+  args:
+    chdir: /usr/src/jansson
   become: yes
 
 - name: Clone Asterisk
@@ -86,22 +90,24 @@
 
 - name: Install prereq
   shell: |
-    install_prereq install
-  chdir: /usr/src/asterisk/contrib/scripts
+    ./install_prereq install
+  args:
+    chdir: /usr/src/asterisk/contrib/scripts
   become: yes
 
 - name: Install Asterisk
   shell: |
-    configure
+    ./configure
     make
     make install
     make samples
-  chdir: /usr/src/asterisk
+  args:
+    chdir: /usr/src/asterisk
   become: yes
 
 - name: asterisk file permissions
   file:
-    dest: "{{ dest }}"
+    dest: "{{ item.dest }}"
     owner: "{{ asterisk_user }}"
     group: "{{ asterisk_group }}"
     recurse: yes
@@ -122,6 +128,10 @@
     name: asterisk
     state: stopped
     enabled: yes
+
+- name: generate dahdi configuration
+  command: /usr/sbin/dahdi_genconf
+  become: yes
 
 - name: move application files
   template:

@@ -3,6 +3,7 @@
   dnf:
     name: "{{ packages }}"
     state: latest
+    enablerepo: powertools
   vars:
     packages:
     - '@Development tools'
@@ -27,4 +28,3 @@
     - libxml2-devel
     - sqlite-devel
     - systemd-devel
-  enablerepo: powertools
