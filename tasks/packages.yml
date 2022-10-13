@@ -1,4 +1,22 @@
 ---
+- name: kernel source
+  dnf:
+    name: "{{ packages }}-{{ ansible_kernel }}"
+    state: latest
+    enablerepo: powertools
+  vars:
+    packages:
+    - kernel
+    - kernel-core
+    - kernel-devel
+    - kernel-doc
+    - kernel-headers
+    - kernel-modules
+    - kernel-modules-extra
+    - kernel-tools
+    - kernel-tools-libs
+    - kernel-tools-libs-devel
+
 - name: Asterisk Dependencies
   dnf:
     name: "{{ packages }}"
@@ -12,16 +30,6 @@
     - mailx
     - screen
     - net-tools
-    - kernel
-    - kernel-core
-    - kernel-devel
-    - kernel-doc
-    - kernel-headers
-    - kernel-modules
-    - kernel-modules-extra
-    - kernel-tools
-    - kernel-tools-libs
-    - kernel-tools-libs-devel
     - libpq-devel
     - libedit-devel
     - libuuid-devel
