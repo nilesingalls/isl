@@ -75,3 +75,14 @@
       dnf:
         name: cloud-init
         state: absent
+
+    - name: update all system packages
+      dnf:
+        name:  "*"
+        state: latest
+
+    - name: Restart
+      command: 'shutdown -r +1'
+      async: 0
+      poll: 0
+      ignore_errors: true

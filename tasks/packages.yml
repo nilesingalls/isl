@@ -2,7 +2,7 @@
 - name: kernel source
   dnf:
     name: "{{ packages }}-{{ ansible_kernel }}"
-    state: latest
+    state: installed
     enablerepo: powertools
   vars:
     packages:
