@@ -1,6 +1,44 @@
 ---
 - name: kernel source
   dnf:
+    name: "{{ packages }}"
+    state: installed
+  vars:
+    packages:
+    - kernel-{{ ansible_kernel }}
+    - kernel-core-{{ ansible_kernel }}
+    - kernel-devel-{{ ansible_kernel }}
+    - kernel-headers-{{ ansible_kernel }}
+    - kernel-modules-{{ ansible_kernel }}
+    - kernel-modules-extra-{{ ansible_kernel }}
+    - kernel-tools-{{ ansible_kernel }}
+    - kernel-tools-libs-{{ ansible_kernel }}
+
+- name: Asterisk Dependencies
+  dnf:
+    name: "{{ packages }}"
+    state: latest
+    enablerepo: powertools
+  vars:
+    packages:
+    - '@Development tools'
+    - kernel-doc
+    - kernel-tools-libs-devel
+    - jq
+    - lynx
+    - mailx
+    - screen
+    - net-tools
+    - libpq-devel
+    - libedit-devel
+    - libuuid-devel
+    - libxml2-devel
+    - sqlite-devel
+    - systemd-devel
+
+---
+- name: kernel source
+  dnf:
     name: "{{ packages }}-{{ ansible_kernel }}"
     state: installed
     enablerepo: powertools
