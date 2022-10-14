@@ -1,0 +1,2 @@
+- src: https://github.com/johanneskastl/ansible-role-disable_cloud-init_services/archive/master.tar.gz
+  name: johanneskastl.disable_cloud-init_services

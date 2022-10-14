@@ -2,6 +2,7 @@
   any_errors_fatal: true
 
   roles:
+    - { role: johanneskastl.disable_cloud-init_services }
 
   environment:
 
@@ -71,11 +72,6 @@
     - import_tasks: tasks/application.yml
 
   post_tasks:
-    - name: remove cloud-init
-      dnf:
-        name: cloud-init
-        state: absent
-
     - name: update all system packages
       dnf:
         name:  "*"
