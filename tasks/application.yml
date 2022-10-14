@@ -126,7 +126,7 @@
     enabled: yes
 
 - name: generate dahdi configuration
-  command: /usr/sbin/dahdi_genconf
+  command: /usr/sbin/dahdi_genconf system chandahdi
   become: yes
 
 - name: start dahdi
