@@ -1,4 +1,11 @@
 ---
+- name: add asterisk user and group
+  user:
+    name: "{{ asterisk_user }}"
+    comment: "{{ asterisk_group }}"
+    group:
+    create_home: false
+
 - name: Clone Dahdi Linux
   git:
     repo: 'https://github.com/asterisk/dahdi-linux.git'
