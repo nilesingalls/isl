@@ -31,17 +31,6 @@
     chdir: '/usr/src/dahdi-tools'
   become: yes
 
-- name: move dahdi init into init.d
-  synchronize:
-    src: /usr/src/dahdi-tools/dahdi.init
-    dest: /etc/init.d/dahdi
-
-- name: enable dahdi
-  service:
-    name: dahdi
-    state: started
-    enabled: yes
-
 - name: Clone libpri
   git:
     repo: 'https://gerrit.asterisk.org/libpri'
@@ -118,6 +107,26 @@
     - { dest: '/var/run/asterisk' }
     - { dest: '/dev/dahdi' }
 
+- name: move dahdi init into init.d
+  synchronize:
+    src: /usr/src/dahdi-tools/dahdi.init
+    dest: /etc/init.d/dahdi
+
+- name: enable dahdi
+  service:
+    name: dahdi
+    state: stopped
+    enabled: yes
+
+- name: generate dahdi configuration
+  command: /usr/sbin/dahdi_genconf
+  become: yes
+
+- name: start dahdi
+  service:
+    name: dahdi
+    state: started
+
 - name: move asterisk service file
   synchronize:
     src: /usr/src/asterisk/contrib/systemd/asterisk.service
@@ -128,10 +137,6 @@
     name: asterisk
     state: stopped
     enabled: yes
-
-- name: generate dahdi configuration
-  command: /usr/sbin/dahdi_genconf
-  become: yes
 
 - name: move application files
   template:
