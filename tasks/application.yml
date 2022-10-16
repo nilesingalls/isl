@@ -101,12 +101,13 @@
     chdir: /usr/src/asterisk
   become: yes
 
-- name: Asterisk create /var/run/asterisk when run as root, but we ain't running Asterisk as root
+- name: Asterisk creates /var/run/asterisk when run as root, but we ain't running Asterisk as root
   file:
     path: /var/run/asterisk
     state: directory
     owner: "{{ asterisk_user }}"
     group: "{{ asterisk_group }}"
+  become: yes
 
 - name: asterisk file permissions
   file:
@@ -120,6 +121,7 @@
     - { dest: '/var/log/asterisk' }
     - { dest: '/var/run/asterisk' }
     - { dest: '/dev/dahdi' }
+become: yes
 
 - name: move dahdi init into init.d
   synchronize:
@@ -173,4 +175,3 @@
     - { dest: '/etc/asterisk/cel.conf', regexp: '^;radiuscfg\ =>\ \/usr\/local\/etc\/radiusclient-ng\/radiusclient.conf', line: 'radiuscfg => /etc/radcli/radiusclient.conf' }
     - { dest: '/etc/asterisk/cdr.conf', regexp: '^;\[radius\]$', line: '[radius]' }
     - { dest: '/etc/asterisk/cdr.conf', regexp: '^;radiuscfg\ =>\ \/usr\/local\/etc\/radiusclient-ng\/radiusclient.conf', line: 'radiuscfg => /etc/radcli/radiusclient.conf' }
-  when: le_disable|default(false)|bool == false
