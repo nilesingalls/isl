@@ -121,7 +121,7 @@
     - { dest: '/var/log/asterisk' }
     - { dest: '/var/run/asterisk' }
     - { dest: '/dev/dahdi' }
-become: yes
+  become: yes
 
 - name: move dahdi init into init.d
   synchronize:
