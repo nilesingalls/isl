@@ -168,6 +168,10 @@
     - { dest: '/etc/asterisk/cdr.conf', regexp: '^;radiuscfg\ =>\ \/usr\/local\/etc\/radiusclient-ng\/radiusclient.conf', line: 'radiuscfg => /etc/radcli/radiusclient.conf' }
   when: le_disable|default(false)|bool == false
 
+- name: start asterisk via root to gen /var/run/asterisk
+  command: /usr/sbin/asterisk
+  become: yes
+
 - name: disable selinux
   selinux:
     state: disabled
