@@ -171,8 +171,3 @@
 - name: start asterisk via root to gen /var/run/asterisk
   command: /usr/sbin/asterisk
   become: yes
-
-- name: disable selinux
-  selinux:
-    state: disabled
-  when: selinux|default(false)|bool == false

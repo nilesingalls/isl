@@ -68,6 +68,10 @@
           3534
 
   tasks:
+    - name: disable selinux
+        selinux:
+        state: disabled
+      when: selinux|default(false)|bool == false
     - import_tasks: tasks/packages.yml
     - import_tasks: tasks/application.yml
 
