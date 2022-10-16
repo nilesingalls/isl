@@ -157,6 +157,17 @@
     - { src: 'templates/extensions.conf', dest: '/etc/asterisk/extensions.conf' }
     - { src: 'templates/manager.conf', dest: '/etc/asterisk/manager.conf' }
 
+- name: modify asterisk sample configs so asterisk runs
+  replace:
+    dest: "{{ item.dest }}"
+    regexp: "{{ item.regexp }}"
+    replace: "{{ item.line }}"
+  with_items:
+    - { dest: '/etc/asterisk/cel.conf', regexp: '^;radiuscfg\ =>\ \/usr\/local\/etc\/radiusclient-ng\/radiusclient.conf', line: 'radiuscfg => /etc/radcli/radiusclient.conf' }
+    - { dest: '/etc/asterisk/cdr.conf', regexp: '^;\[radius\]$', line: '[radius]' }
+    - { dest: '/etc/asterisk/cdr.conf', regexp: '^;radiuscfg\ =>\ \/usr\/local\/etc\/radiusclient-ng\/radiusclient.conf', line: 'radiuscfg => /etc/radcli/radiusclient.conf' }
+  when: le_disable|default(false)|bool == false
+
 - name: disable selinux
   selinux:
     state: disabled
