@@ -11,12 +11,12 @@
     selinux: false
     asterisk_user: asterisk
     asterisk_group: asterisk
-    dahdi_linux_version: v3.2.0
-    dahdi_tools_version: v3.2.0
-    libpri_version: 1.6.0
+    dahdi_linux_version: v2.11.1
+    dahdi_tools_version: v2.11.1
+    libpri_version: 1.4.15
     starpy_version: 1.0.3
     jansson_version: v2.14
-    asterisk_version: 16.9.0
+    asterisk_version: 13.7.2
     cdr_pgsql_hostname: !vault |
           $ANSIBLE_VAULT;1.1;AES256
           31626233343164316666373561393564643638363361363439626266383438313761383733643264
