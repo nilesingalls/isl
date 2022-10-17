@@ -1,5 +1,5 @@
 # Niles Ingalls 2022
-# Indiana State Library auto-dialer
+# LLDC phone system including mantrap
 # rewriting old phone system for current asterisk, and moving from phpagi to starpy
 
 
