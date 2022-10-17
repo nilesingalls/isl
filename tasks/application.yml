@@ -160,7 +160,6 @@
     dest: "{{ item.dest }}"
   loop:
     - { src: 'templates/asterisk.conf', dest: '/etc/asterisk/asterisk.conf' }
-    - { src: 'templates/cdr_pgsql.conf', dest: '/etc/asterisk/cdr_pgsql.conf' }
     - { src: 'templates/chan_dahdi.conf', dest: '/etc/asterisk/chan_dahdi.conf' }
     - { src: 'templates/extensions.ael', dest: '/etc/asterisk/extensions.ael' }
     - { src: 'templates/extensions.conf', dest: '/etc/asterisk/extensions.conf' }

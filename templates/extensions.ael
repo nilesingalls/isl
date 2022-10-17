@@ -1,685 +1,923 @@
-// Indiana State Library - holds notification dialer
-// Niles Ingalls 
-
-// NOTE:
-// add Set(GROUP()=outgoing_hold)
-// to any part of the dialplan making outgoing, or receiving incoming calls.
-// 
-
+// Niles Ingalls
+// New DID's 317-715-6778 thru 6787
 
 globals {
-	OUTBOUND-TRUNK=DAHDI/g1;
-	OUTBOUND-TRUNKMSD=1;
-	CALLERID_NAME = "Evergreen Indiana";
-	CALLERID_NUM = <3172021220>;
-	// alternate CID's. You can omit one for the default CID
-	CALLERID_317 = <3172021220>;	
-	CALLERID_219 = <2192320137>;
-	CALLERID_260 = <2604403355>;
-	CALLERID_574 = <5745382030>;
-	CALLERID_765 = <7655885982>;
 
-	MSG_REPEAT = 4;
-	CALLBACK-TIMEFRAME=1800;	// time in seconds that the system recognizes a user that left
-								// or was invited in a support call.
-								// 1800 represents 30 minutes. (a good default)
-	RECORD_PROMPTS=1;			// set to 1, if you want to record new prompts.
-								// WARNING: This DISABLES the system.
+	OUTBOUND-GOOGLE=Motif/lldcnoc;
+	INCOMING_GOOGLE=SIP/1000&SIP/2000&SIP/3001&SIP/3003;
+	INCOMING_EASTGATE=SIP/timothyingalls;
+	INCOMING_HENRYSTREET=SIP/timothyingalls;
+	CALLERID_NAME = "LLDCNOC";
+	CALLERID_NUM = <3177218603>;
 }
 
-context trunkld {
-        _91NXXNXXXXXX => {
-                &didmap();
-                NoOp(${CALLERID(all)});
-                Dial(${OUTBOUND-TRUNK}/${EXTEN:${OUTBOUND-TRUNKMSD}});
-        };
-};
 
-context trunk-local {
-        _9NXXXXXX => {
-                &didmap();
-                NoOp(${CALLERID(all)});
-                Dial(${OUTBOUND-TRUNK}/${EXTEN:${OUTBOUND-TRUNKMSD}});
-        };
-        _9N317XXXXXX => {
-                &didmap();
-                NoOp(${CALLERID(all)});
-                Dial(${OUTBOUND-TRUNK}/${EXTEN:${OUTBOUND-TRUNKMSD}});
-        };
-};
-
-context trunktollfree {
-        _91800NXXXXXX => Dial(${OUTBOUND-TRUNK}/${EXTEN:${OUTBOUND-TRUNKMSD}});
-        _91888NXXXXXX => Dial(${OUTBOUND-TRUNK}/${EXTEN:${OUTBOUND-TRUNKMSD}});
-        _91877NXXXXXX => Dial(${OUTBOUND-TRUNK}/${EXTEN:${OUTBOUND-TRUNKMSD}});
-        _91866NXXXXXX => Dial(${OUTBOUND-TRUNK}/${EXTEN:${OUTBOUND-TRUNKMSD}});
-};
-
-context local-ael {
-	ignorepat => 9;
-	includes {
-		default;
-		trunk-local;
-		trunkld;
-		trunktollfree;
-	};
-};
-
+#include "/etc/asterisk/lldc_fax.ael"
 
 context default {
 
-	3172021230 => Dial(SIP/3172021230,30);
-//	3172021221/3179689239 => goto incoming_dev|${EXTEN}|begin; // incoming test line for dev server.
-//	3172021222/3179689239 => goto support|s|begin;
-//	3172021221/3179689239 => goto incoming|${EXTEN}|begin;
-	3172021221/3179689239 => goto incoming|3172021220|begin;
+        includes {
+//		didmap;
+        }
 
-	3172021222 => {
-// set org user count
-//		Record(en/eg/system/thankyoufromthestaffat:wav);
-//		Playback(eg/system/thankyoufromthestaffat);
-//		Hangup();
-		Set(org=4);
-		Set(count=2);
-		Set(user=26437);
-//		&hold_playback_new();
+        3176634689 => {
+                Answer();
+                Set(FAXEXTEN=${EXTEN});
+                Wait(3);
+                goto lldc,lldc,1;
+        }
+
+	3174232591 => {
+		Answer();
+                Set(FAXEXTEN=${EXTEN});
+                Wait(3);
+                goto lldc,lldc,1;
+	}
+
+//	3172750001 => {
+//	Answer();
+//	Dial(${INCOMING_EASTGATE},30);
+//	Hangup();
+//	}
+
+//        3172750002 => {
+//                Answer();
+//                Set(CALLERID(all)="${EXTEN}" <${CALLERID(num)}>);
+//		goto jitsi,jitsi,1;
+////                Dial(SIP/jitsi,30);
+//                Hangup();
+////                goto incoming_fax,begin,1;
+//        }
+
+        3172750003 => { // utility / admin / management line
+	        Answer();
+	        Wait(1);
+	        Set(tmpaudio=page${EPOCH});
+	        Playback(beep);
+	        Record(${tmpaudio}:wav);
+	        Hangup();
+        }
+
+        3172750004 => {
+                Answer();
+                Set(FAXEXTEN=${EXTEN});
+                Dial(SIP/vpn1004,30);
+                Voicemail(1004,u);
+                Voicemail(1004,b);
+              Hangup();
+        }
+
+        3172750006 => {
+                Answer();
+                Authenticate(2062);
+                MeetMe(6);
+                Hangup();
+        }
+
+        3172750007 => {
+                Answer();
+                Authenticate(2062);
+                MeetMe(7);
+                Hangup();
+        }
+
+	3172750008 => {
+		VoiceMailMain();
+	        Hangup();
+	}
+
+	3172750009 => {
+		Answer();
+		Authenticate(2062);
+		MeetMe(1);
 		Hangup();
 	}
 
-//	_XXXXXXXXXX/3179689239 => goto incoming|${EXTEN}|begin; 
+	3177156778 => {
 
-        _XXXXXXXXXX => goto incoming|${EXTEN}|begin;
-
-
-// move call_holds into the hold_notification context, and then edit call_holds.php
-	call_holds => {
-
-hold_notify:
-
-	Answer();
-	Set(GROUP()=outgoing_hold);
-	&call_ceiling();
-
-//	AGI(eg/log_patron.php,${id},1);
-	AGI(eg/log_patron.php,${user},${phone},${card},${date},${org},${count},${attempts},${id});
-	Set(DB(patron/${user})=${phone},${card},${date},${org},${count},${attempts},${id});
-	&hold_playback();		
-	Hangup();
+		Dial(DAHDI/G1/3175900594);
+		Hangup();
 	}
 
-	h => Hangup();
+	// MUTARA mutara stuff here
+	3177156780 => {
+		Answer();
+		goto mutara,mutara,1;
+	}
+        3177156781 => {
+                Answer();
+                Set(FAXEXTEN=${EXTEN});
+                Dial(SIP/8000,30);
+                Voicemail(8000,u);
+                Voicemail(8000,b);
+              Hangup();
+        }
+        3177156782 => {
+                Answer();
+                goto mutara,mutara,1;
+        }
+        3177156783 => {
+                Answer();
+                goto mutara,mutara,1;
+        }
+        3177156784 => {
+                Answer();
+                goto mutara,mutara,1;
+        }
+	3177156787 => {
+		Answer();
+		Set(FAXEXTEN=${EXTEN});
+		Dial(SIP/vpn3107,30);
+		Voicemail(3107,u);
+		Voicemail(3107,b);
+		Hangup();
+	}
+        _31727500XX => {
+
+		// If you want the outgoing CID to match inboud, see the definecid macro
+		// at the end of the dialplan.
+
+                switch(${EXTEN}) {
+
+                        case 3172750004:
+                                Set(didmap=1004);
+                                break;
+                        case 3172750005:
+                                Set(didmap=3007);
+                                break;
+                        case 3172750010:
+                                Set(didmap=1000);
+                                break;
+                        case 3172750011:
+                                Set(didmap=1001);
+                                break;
+                        case 3172750012:
+                                Set(didmap=1002);
+                                break;
+                        case 3172750013:
+                                Set(didmap=1003);
+                                break;
+                        case 3172750014:
+                                Set(didmap=2000);
+                                break;
+                        case 3172750015:
+                                Set(didmap=2001);
+                                break;
+                        case 3172750016:
+                                Set(didmap=2002);
+                                break;
+                        case 3172750017:
+                                Set(didmap=2003);
+                                break;
+                        case 3172750018:
+                                Set(didmap=2004);
+                                break;
+                        case 3172750019:
+                                Set(didmap=2005);
+                                break;
+                        case 3172750020: 
+                                Set(didmap=1005);
+                                break;
+                        case 3172750021:
+                                Set(didmap=3001);
+                                break;
+                        case 3172750022:
+                                Set(didmap=3002);
+                                break;
+                        case 3172750023:
+                                Set(didmap=3003);
+                                break;
+                        case 3172750024:
+                                Set(didmap=3004);
+                                break;
+                        case 3172750025:
+                                Set(didmap=3005);
+                                break;
+                        case 3172750049:
+                                Set(didmap=7000);
+                                break;
+                        case 3172750050:
+                                Set(didmap=7001);
+                                break;
+                        default:
+                                break;
+                }
+
+                if (${EXISTS(${didmap})}) {
+
+                        goto local-ael,${didmap},1;
+
+                } else {
+
+	                Answer();
+			Set(FAXEXTEN=${EXTEN});
+	                Wait(3);
+	                goto lldc,lldc,1;
+
+		}
+
+        }
+
+	fax => {
+	        Hangup();
+		Answer();
+		Set(EXTEN=${FAXEXTEN});
+		Set(CALLERID(all)="${FAXEXTEN}" <${CALLERID(num)}>);
+//		goto incoming_fax,begin,1;
+
+//                NoOp(Dialing to ${EXTEN});
+                Dial(IAX2/iaxmodem/${CALLERID(num)});
+                Dial(IAX2/iaxmodem1/${CALLERID(num)});
+                Dial(IAX2/iaxmodem2/${CALLERID(num)});
+                Dial(IAX2/iaxmodem3/${CALLERID(num)});
+                Dial(IAX2/iaxmodem4/${CALLERID(num)});
+                Playtones(busy);
+                Busy;
+                Hangup();
+
+	}
+
+	h => {
+		Hangup();
+	}
+
 }
 
+context mantrap {
 
-context hold_notification {
+	911 => {
+		EAGI(mantrapemergency.php);
+		Playback(lldc_911);
+		Playback(lldc_recorded);
+		Set(CALLFILENAME=911-${STRFTIME(${EPOCH},,%Y%m%d-%H%M%S)});
+		MixMonitor(${CALLFILENAME}.wav,b);
+		Set(CALLERID(num)=3172750001);
+		Dial(DAHDI/G1/911,30);
+		goto mantrap,s,1;
+//		if (${EXISTS(${CALLFILENAME})}) AGI(/usr/share/asterisk/agi-bin/mail_monitor/mail.php,${CALLFILENAME});
+		Hangup();
+	}
 
-        _XXXXXXXXXX => {
-s:
-        Set(CALLERID(all)=${CALLERID_NAME} ${CALLERID_NUM}); // set default CID
-        Set(old_notify=${user},${DB_DELETE(${purge_db}/${user})});
-        Set(CDR(userfield)=${user});
-        // alter outgoing CID if patron is in another area code
-        if ( ${EXISTS(${CALLERID_${outbound:-10:3}}) } ) Set(CALLERID(all)=${CALLERID_NAME} ${CALLERID_${outbound:-10:3}} );
-        Dial(${outbound});
-        Hangup();
-        }
-        h => {
-        if ( "${DIALSTATUS}" != "ANSWER" ) &requeue();
-        }
-
-}
-
-
-context incoming {
-
-	_XXXXXXXXXX => {
-begin:
-	Answer();
-	Set(TIMEOUT(digit)=1);
-	Set(INCOMING=${EXTEN});
-	Wait(1);
-
-		if ( ${EXISTS(${CALLERID_${EXTEN:-10:3}}) } ) {
-
-			if ( ${EXTEN}==${CALLERID_${EXTEN:-10:3}:-11:10} ) {
-
-			        Answer();
-				Set(GROUP()=outgoing_hold); 			// prevent outgoing holds from attempting to use this channel
-				Ringing(); 					// Induce ringing, so our incoming_eg script can run in the "background"	
-			        AGI(eg/incoming_eg.php,${CALLERID(num)});
-
-				Playback(en/eg/system/incoming_youhavereached);
-					if ( ${incoming_userid} ) {
-						Playback(en/eg/system/incoming_wehaveidentifiedyouas);
-						Playback(en/eg/users/${incoming_userid});
-					}
-				Playback(en/eg/system/incoming_telephoneandemailnotifications);
-				Background(en/eg/system/incoming_ifyouarenotanevergreenlibrarymember); 								// if user enters 9, we get moving
-				WaitExten(5);
-
-				Playback(en/eg/system/incoming_goodbye);
-				Hangup();
-
+	_. => {
+		Playback(lldc_recorded);
+//		EAGI(mantrap.php);
+		Set(CALLFILENAME=911-${STRFTIME(${EPOCH},,%Y%m%d-%H%M%S)});
+                MixMonitor(${CALLFILENAME}.wav,b);
+		for (x=0; ${x} < 3; x=${x} + 1) {
+			Background(lldc_mantrap);
+//			Wait(5);
+			Ringing();
+//			Wait(5);
+			// dial East Gate NOC
+			// dial East Gate NOC cell phones
+			// dial 711 NOC.
+			// dial 711 cell phones.
+			Dial(SIP/1000&SIP/1001,30); // dial EastGate NOC
+			Set(FORWARD=${DB(CELL/1000)});
+			if(${FORWARD}) {
+				Playback(lldc_cell);
+				Set(CALLERID(num)=3172750012);
+				Dial(DAHDI/G1/${FORWARD},20,rU(lldc_screen^lldc_screen)); // dial EastGate Cell
+			}
+			Set(CALLERID(num)=1002);
+			Dial(SIP/vpn2000,30);
+			Set(FORWARD=${DB(CELL/2000)});
+			if(${FORWARD}) {
+				Playback(lldc_cell);
+				Set(CALLERID(num)=3172750012);
+	                        Dial(DAHDI/G1/${FORWARD},15,rU(lldc_screen^lldc_screen));
 			}
 
 		}
+// VoiceMailMain(s1000);
+		Hangup();
+	}
 
+	h => {
+	}
+
+}
+
+context local-ael {
+
+        includes {
+                default;
+		outgoing;
+		speeddial;
         }
 
-	9 => {
-		if (${incoming_userid}) {
-			// need some digits here.
-			SayDigits(${CALLERID(num)});
-			Playback(en/eg/system/incoming_iisassociatedwithanevergreenaccount);
-			AGI(eg/incoming_notify_admin.php,${incoming_userid},${incoming_card},${CALLERID(num)},${incoming_email});       // notify admin to remove phone from this account
+	asterisk => {
+		if (${EXTEN} = '5001') {
+
+			VoiceMailMain(s3001);
+
 		} else {
-			Playback(en/eg/system/incoming_pleaseleaveamessageafterthetone);
-			Voicemail(1234,s);
-		}
 
-		Playback(en/eg/system/incoming_goodbye);
-		Hangup();
-
-	}
-
-	t => {
-		Playback(en/eg/system/incoming_goodgye);
-		Hangup();
-	}
-
-	i => {
-		// you have selected an invalid key
-		goto incoming|${INCOMING}|begin;
-	}
-
-	h => Hangup();
-}
-
-
-context incoming_dev {
-
-        3172021221 => { // incoming test line for dev server.
-begin:
-
-                if ( ${CALLERID(name)} = "DEV" ) {
-
-			goto support|s|begin;
-               		Hangup(); 
-
-                } else {
-
-                        Set(CALLERID(name)="DEV");
-                        Dial(DAHDI/g2/${EXTEN});
-                        Hangup();
+			VoiceMailMain(s${EXTEN});
 
 		}
 
-        }
-
-}
-
-
-context passthru {
-
-	_. => {
-
-		Dial(DAHDI/G1/${EXTEN},,);
-		Hangup();
-
+                Hangup();
 	}
 
-}
-
-context callback {
-        s => {
-intro:
-                Background(en/support/identified_a);  // we have identified you as
-                SayDigits(${CALLERID(num)});       // (callerid)
-                for (x=0; ${x} < 2; x=${x} + 1) {
-                        Background(en/support/identified_b); // if this is your callback #, press 1. otherwise, press 9.
-                        WaitExten(5);
-                }
-                Set(callback=${CALLERID(num)});
-                goto non-critical-notify|s|notify;
+	8888 => {
+		VoiceMailMain();
+		Hangup();
+	}
+        1000/1000 => {
+                VoiceMailMain(s${EXTEN});
+                Hangup();
         }
-        1 => {
-                        Set(callback=${CALLERID(num)});
-                        goto non-critical-notify|s|notify;
+	1001/1001 => { 
+		VoiceMailMain(s${EXTEN});
+		Hangup();
+	}
+	1002/1002 => {
+		VoicemMailMain(s${EXTEN});
+	}
+        1003/1003 => {  
+                VoiceMailMain(s${EXTEN});
+                Hangup();
         }
-
-        9 => {
-                        goto callback-identify|s|identify;
-                 }
-        t => {
-                Playback(en/support/goodbye);
-                goto h|1;
-                }
-        h => Hangup();
-        i => {
-        Playback(en/support/invalid);
-        goto s|intro;
+        1004/vpn1004 => {
+                VoiceMailMain(s${EXTEN});
+                Hangup();
         }
-}
-
-
-context callback-identify {
-        s => {
-identify:
-                        &callback-identify-macro();
-                        NoOp(${callback});
-                        goto non-critical-notify|s|notify;
+	1009/1009 => {
+		VoiceMailMain(s${EXTEN});
+		Hangup();
+	}
+	1010/1010 => {
+		VoiceMailMain(s${EXTEN});
+		Hangup();
+	}
+        2000/2000 => {  
+                VoiceMailMain(s${EXTEN});
+                Hangup();
         }
-        1 => goto non-critical-notify|s|notify;
-        9 => goto s|identify;
-        t => {
-                Playback(en/support/goodbye);
-                goto h|1;
-                }
-        h => Hangup();
-        i => {
-        Playback(en/support/invalid);
-        goto s|identify;
+        2000/vpn2000 => {
+                VoiceMailMain(s${EXTEN});
+                Hangup();
         }
-}
-
-context autodial {
-        s => {
-        Set(DB(critical/${cid})=${room}-${tmpaudio:-10}); //verify this
-        for (x=0; ${x} < 3; x=${x} + 1) {
-                Background(${tmpaudio});
-                Background(en/support/screen);
+        2001/2001 => {  
+                VoiceMailMain(s${EXTEN});
+                Hangup();
         }
-        Background(en/support/goodbye);
-        Hangup();
+        2002/2002 => {  
+                VoiceMailMain(s${EXTEN});
+                Hangup();
         }
-        _X => &conference_room(${room});
-}
-
-
-context support {
-
-	s => {
-		begin:
-
-	        Wait(1);
-	        Answer();
-	        Set(TIMEOUT(digit)=5);
-	        Set(TIMEOUT(response)=10);
-
-	        // find out if person left/was_invited into a conference room.
-	        // if so, give them the opportunity to join/re-join
-
-	        Set(areyoufamiliar=${DB_EXISTS(critical/${CALLERID(number)})});
-
-	        if ( ${areyoufamiliar} ) {
-
-                        // determine how long ago they joined or were invited to join conference room
-
-                        Set(seen=${MATH(${EPOCH}-${CUT(DB_RESULT,-,2)},int)});
-
-                        if ( ${seen} < ${CALLBACK-TIMEFRAME} ) {
-
-                                goto youarefamiliar|s|begin;
-
+        2003/2003 => {  
+                VoiceMailMain(s${EXTEN});
+                Hangup();
+        }
+        2004/2004 => {  
+                VoiceMailMain(s${EXTEN});
+                Hangup();
+        }
+        2005/2005 => {  
+                VoiceMailMain(s${EXTEN});
+                Hangup();
+        }
+        2006/2006 => {
+                VoiceMailMain(s${EXTEN});
+                Hangup();
+        }
+        3001/3001 => {  
+                VoiceMailMain(s${EXTEN});
+                Hangup();
+        }
+        3001/5001 => {  
+                VoiceMailMain(s${EXTEN});
+                Hangup();
+        }
+        3002/vpn3105 => {
+                VoiceMailMain(s${EXTEN});
+                Hangup();
+        }
+        3002/3002 => {  
+                VoiceMailMain(s${EXTEN});
+                Hangup();
+        }
+        3003/3003 => {  
+                VoiceMailMain(s${EXTEN});
+                Hangup();
+        }
+        3004/3004 => {  
+                VoiceMailMain(s${EXTEN});
+                Hangup();
+        }
+        3005/3005 => {  
+                VoiceMailMain(s${EXTEN});
+                Hangup();
+        } 
+        3006/3006 => {  
+                VoiceMailMain(s${EXTEN});
+                Hangup();
+        }
+        3007/3007 => {
+                VoiceMailMain(s${EXTEN});
+                Hangup();
+        }
+	3107/vpn3107 => {
+		VoiceMailMain(s${EXTEN});
+		Hangup();
+	}
+        7000/7000 => {
+                VoiceMailMain(s${EXTEN});
+                Hangup();
+        }
+        7001/7001 => {
+                VoiceMailMain(s${EXTEN});
+                Hangup();
+        }
+        7002/7002 => {
+                VoiceMailMain(s${EXTEN});
+                Hangup();
+        }
+        7003/7003 => {
+                VoiceMailMain(s${EXTEN});
+                Hangup();
+        }
+        7004/7004 => {
+                VoiceMailMain(s${EXTEN});
+                Hangup();
+        }
+        8000/8000 => {
+                VoiceMailMain(s${EXTEN});
+                Hangup();
+        }
+        8007/8007 => {
+                VoiceMailMain(s${EXTEN});
+                Hangup();
+        }
+        3001 => {
+                Dial(SIP/3001&SIP/5001,30);
+                Set(FORWARD=${DB(CELL/${EXTEN})});
+                if(${FORWARD}) {
+                        if (${LEN(${CALLERID(num)})} > 6) { // if call is external, we screen to cellphone
+                                Playback(lldc_cell);
+                                Set(CALLERID(num)=3172750001);
+                                Dial(DAHDI/G1/${FORWARD},20,rU(lldc_screen^lldc_screen));
+                                Voicemail(${EXTEN},u);
+                                Voicemail(${EXTEN},b);
                         } else {
-       
-	                         // seen more than CALLBACK-TIMEFRAME seconds ago. do some cleanup
-                                &db_cleanup(critical);
-
+                                Voicemail(${EXTEN},u);
+                                Voicemail(${EXTEN},b);
                         }
 
-		}
-
-		welcome:
-
-		for (x=0; ${x} < 3; x=${x} + 1) {
-			background(en/support/intro); // press 9 for non-critical issue, 0 for immediate assistance
-	                WaitExten(5);
-	        }
-
-                Playback(en/support/goodbye); // caller is asleep.
-                Hangup();
-        }
-
-
-        0 => goto critical|s|setchannel;
-        9 => goto non-critical|s|intro;
-        t => {
-                Playback(en/support/goodbye);
-                goto h|1;
-        }
-        h => Hangup();
-        i => {
-        Playback(en/support/invalid);
-        goto s|welcome;
-	}
-}
-
-context critical {
-        s => {
-setchannel:
-                // TO DO: Have a macro determine if there are any on-going conference calls.
-                // IF SO, inform the user that the support staff is working with another caller,
-                // and invite them to leave a "non-critical" message to be called back.
-                //
-                // *another TO DO, when a page comes into the system, have it scan for multiple rooms.
-                // sent caller to the invited room, but invite them to choose a different conference room.*
-
-
-                // determine conference room.  in order to avoid collision in the event of multiple calls,
-                // use callers channel to define conference room. (1-23) If we cannot come to a determination
-                // for some reason, fall back to default conference room. (0)
-                // this should only happen if you're using a SIP/IAX trunk.
-
-                Set(chan=${CUT(CUT(CHANNEL,-,1),/,2)});
-                Set(tmpaudio=page${EPOCH});
-                if ( ${LEN(${chan})} >= 3 ) Set(chan=0);
-
-                // UNTESTED: if you're using 1.4 and using a SIP/IAX trunk, you can do the following
-                // to place the caller into an un-used conference room.
-                //If ($[$[${LEN(${chan})}] >= 3]) {
-                //      Set(chan=${Rand(0,23)});
-                //      MeetMeCount(${chan}|count);
-                //      if ( $[$[${count}] > 0] ) goto s|setchannel;
-                //}
-intro:
-
-// none of my GotoIfTime's are working below. This works in 1.4, not sure what the heck is up.
-// ael changed ALOT between 1.4 and 1.6. oh well. - niles
-
-//              goto daytime|8:30-16:30|mon-fri|*|*;
-//              GotoIfTime(8:30-16:30|mon-fri|*|*?daytime);
-//              GotoIfTime(16:30-21:00|mon-fri|*|*?nighttime);
-//              GotoIfTime(9:30-21:00|sat-sun|*|*?nighttime);
-
-closed:
-                Playback(support/notavailable);
-                goto non-critical|s|intro;
-daytime:
-                Set(pagetime=daytime);
-                goto critical|s|cont;
-nighttime:
-                Set(pagetime=nighttime);
-cont:
-                Background(support/leavedescription); // at the tone, leave a description and press pound
-                Record(${tmpaudio}:wav);
-                // Let's send out e-mail with this information.
-                Set(DB(critical/${CALLERID(number)})=${chan}-${tmpaudio:-10});
-                AGI(support/ei_page.sh|${tmpaudio}|${chan}|${pagetime});
-
-                Playback(support/entering_critical_conf);
-reroute:
-                &conference_room(${chan});
-                Hangup();
-        }
-        9 => {
-                // play a recording, telling them that they are being routed to non-critical, and to press 0 to get back into the room.
-                Background(support/leavingcritical_noncritical);
-                WaitExten(5);
-                goto non-critical|s|intro;
-                }
-        0 => goto s|reroute;
-        t => {
-                Playback(support/goodbye);
-                goto h|1;
-                }
-        h => Hangup();
-        i => {
-        Playback(support/invalid);
-        goto s|intro;
-        }
-}
-
-
-context non-critical {
-        s => {
-                Wait(1);
-intro:
-                Background(en/support/callback); // if you require a callback press 1, otherwise press 9
-                WaitExten(10);
-                Set(tmpaudio=page${EPOCH});
-record:
-                Record(${tmpaudio}:wav);
-        }
-
-        1 => goto callback|s|intro;
-        9 => goto non-critical-notify|s|notify;
-        t => {
-                Playback(en/support/goodbye);
-                goto h|1;
-                }
-        h => Hangup();
-        i => {
-        Playback(en/support/invalid);
-        goto s|intro;
-        }
-}
-
-context non-critical-notify { // record the message, broadcast it to support staff.
-        s => {
-notify:
-                Playback(en/support/leave_a_message);
-                Record(support%d.wav);
-                NoOp(${RECORDED_FILE});
-ifyouaresatisfied:
-                for (x=0; ${x} < 2; x=${x} + 1) {
-                        Background(support/r_u_satisfied);
-                        WaitExten(5);
-                }
-                goto non-critical-notify|1|fireaway;
-        }
-        1 => {
-fireaway:
-                Set(support_file=${RECORDED_FILE});
-                playback(en/support/thankyou_noncritical);
-                Playback(en/support/goodbye);
-                Hangup();
-        }
-        2 => {
-                playback(${RECORDED_FILE});
-                WaitExten(1);
-                goto s|ifyouaresatisfied;
-        }
-        3 => goto s|notify;
-        t => {
-                if ( ${RECORD_PROMPTS} ) goto non-critical-notify|1|fireaway;
-                Playback(en/support/goodbye);
-                goto h|1;
-                }
-        h => {
-                AGI(support/ei_support.sh,${support_file},${callback}); //${RECORDED_FILE} gets destroyed on hangup. passing data via a temp variable.
-                Hangup();
-        }
-        i => {
-        Playback(en/support/invalid);
-        goto s|notify;
-        }
-}
-
-
-context youarefamiliar {
-
-        s => {
-begin:
-                Wait(1);
-                for (x=0; ${x} < 2; x=${x} + 1) {
-                        Background(en/support/youarefamiliar); // press 1 to join call, or any other key to continue
-                        WaitExten(5);
-                }
-                // caller is asleep. do some cleanup and continue
-                &db_cleanup(critical);
-                goto support|s|welcome;
-        }
-        _[2-90*#] => {
-                &db_cleanup(critical);
-                goto support|s|welcome; // any other key
-        }
-        t => {
-                // caller is asleep. do some cleanup and continue
-                &db_cleanup(critical);
-                goto support|s|welcome;
-        }
-        i => {
-                // do some cleanup and continue
-                &db_cleanup(critical);
-                goto support|s|welcome;
-        }
-        h => Hangup();
-}
-
-
-macro call_ceiling() { // if there are more calls than channels, we bow out.
-
-	if ( ${total_channels} < ${GROUP_COUNT()} ) {
-
-		NoOp(Call Ceiling Breached, Terminating call);
-		Hangup();
-
-	}
-
-	return;
-
-}
-
-macro hold_playback() {
-
-        for (x=0; ${x} < ${MSG_REPEAT}; x=${x} + 1) { // play 4 times for answering machines
-                Answer();
-//                Playback(eg/system/thisisanautomatedcallfrom);
-		Playback(eg/system/thisisanautomatedcallfromthe);
-                Set(org_exists=${DB_EXISTS(org_unit/${org})});
-
-                if ( ${org_exists} ) {
-
-                        Playback(eg/library/${org});
-
-                 } else {
-
-                        Playback(eg/library/0);
-
-                 }
-
-//                Playback(eg/system/intendedfor);
-		Playback(eg/system/for);
-                Playback(eg/users/${user});
-
-                if ( ${count} > 1 ) {
-
-//                        Playback(eg/system/informingyouplural);
-			Playback(eg/system/pleasepickupyourrequestedlibraryitemwithin7days);
                 } else {
-
-//                        Playback(eg/system/informingyousingular);
-			Playback(eg/system/pleasepickupyourrequestedlibraryitemswithin7days);
-
+                        Voicemail(${EXTEN},u);
+                        Voicemail(${EXTEN},b);
                 }
 
-		Playback(eg/system/thankyoufromthestaffat);
-                if ( ${org_exists} ) {
+        }
+	1000 => {
 
-                        Playback(eg/library/${org});
+                Set(CALLFILENAME=${CALLERID(num)}-${EXTEN}-${STRFTIME(${EPOCH},,%Y%m%d-%H%M%S)});
+                Set(CDR(userfield)="${CALLFILENAME}");
+                MixMonitor(${CALLFILENAME}.wav,b);
+		Playback(this-call-may-be-monitored-or-recorded);
+		Dial(SIP/1000&SIP/1001,30);
+//		Dial(SIP/1000,30);
+                Set(FORWARD=${DB(CELL/${EXTEN})});
+                if(${FORWARD}) {
+                        if (${LEN(${CALLERID(num)})} > 6) { // if call is external, we screen to cellphone
+                                Playback(lldc_cell);
+                                Set(CALLERID(num)=3172750001);
+                                Dial(DAHDI/G1/${FORWARD},20,rU(lldc_screen^lldc_screen));
+                                Voicemail(${EXTEN},u);
+                                Voicemail(${EXTEN},b);
+                        } else {
+                                Voicemail(${EXTEN},u);
+                                Voicemail(${EXTEN},b);
+                        }
 
-                 } else {
+                } else {
+                        Voicemail(${EXTEN},u);
+                        Voicemail(${EXTEN},b);
+                }
 
-                        Playback(eg/library/0);
+	}
+        2000 => {
 
-                 }
+                Set(CALLFILENAME=${CALLERID(num)}-${EXTEN}-${STRFTIME(${EPOCH},,%Y%m%d-%H%M%S)});
+                Set(CDR(userfield)="${CALLFILENAME}");
+                MixMonitor(${CALLFILENAME}.wav,b);
+                Playback(this-call-may-be-monitored-or-recorded);
+                Dial(SIP/2000&SIP/2001,30);
+                Set(FORWARD=${DB(CELL/${EXTEN})});
+                if(${FORWARD}) {
+                        if (${LEN(${CALLERID(num)})} > 6) { // if call is external, we screen to cellphone
+                                Playback(lldc_cell);
+                                Set(CALLERID(num)=3172750001);
+                                Dial(DAHDI/G1/${FORWARD},20,rU(lldc_screen^lldc_screen));
+                                Voicemail(${EXTEN},u);
+                                Voicemail(${EXTEN},b);
+                        } else {
+                                Voicemail(${EXTEN},u);
+                                Voicemail(${EXTEN},b);
+                        }
 
-                if ( ${x} < ${MSG_REPEAT} ) wait(1);
+                } else {
+                        Voicemail(${EXTEN},u);
+                        Voicemail(${EXTEN},b);
+                }
 
         }
+        2062 => {
+                Answer();
+                MeetMe(1);
+                Hangup();
+        }
+	3002 => {
+		Dial(SIP/vpn3105,30);
+		Voicemail(3002);
+	}
+	3006 => {
+//		Dial(SIP/3005,30);
+		Dial(SIP/vpn3105,30);
+		Voicemail(3006);
+	}
+	5001 => {
+//                Dial(SIP/3002,30);
+		Dial(SIP/vpn3105,30);
+                Voicemail(3002,u);
+                Voicemail(3002,b);
+                Hangup();
 
+		Dial(SIP/3001&SIP/5001,30);
+		Set(FORWARD=${DB(CELL/${EXTEN})});
+		if(${FORWARD}) {
+                        if (${LEN(${CALLERID(num)})} > 6) { // if call is external, we screen to cellphone
+                                Playback(lldc_cell);
+                                Set(CALLERID(num)=3172750001);
+                                Dial(DAHDI/G1/${FORWARD},20,rU(lldc_screen^lldc_screen));
+                                Voicemail(${EXTEN},u);
+                                Voicemail(${EXTEN},b);
+                        } else {
+                                Voicemail(${EXTEN},u);
+                                Voicemail(${EXTEN},b);
+                        }
 
-        return;
+                } else {
+                        Voicemail(${EXTEN},u);
+                        Voicemail(${EXTEN},b);
+                }
 
-}
+	}
 
+	_[1-9]XXX => { //1-3
 
-macro hold_playback_old() {
-
-        for (x=0; ${x} < ${MSG_REPEAT}; x=${x} + 1) { // play 4 times for answering machines
-		Answer();
-                Playback(eg/system/thisisanautomatedcallfrom);
-
-        	Set(org_exists=${DB_EXISTS(org_unit/${org})});
-
-	        if ( ${org_exists} ) {
-
-			Playback(eg/library/${org});
-       
-	         } else {
-
-			Playback(eg/library/0);
-       
-	         }
-
-                Playback(eg/system/intendedfor);
-                Playback(eg/users/${user});
-
-		if ( ${count} > 1 ) {
-			
-			Playback(eg/system/informingyouplural);
+                Set(CALLFILENAME=${CALLERID(num)}-${EXTEN}-${STRFTIME(${EPOCH},,%Y%m%d-%H%M%S)});
+                Set(CDR(userfield)="${CALLFILENAME}");
+// taking out temporarially
+                MixMonitor(${CALLFILENAME}.wav,b);
+		Playback(this-call-may-be-monitored-or-recorded);
+		Dial(SIP/${EXTEN},30);
+	        Set(FORWARD=${DB(CELL/${EXTEN})});
+		if(${FORWARD}) {
+			if (${LEN(${CALLERID(num)})} > 6) { // if call is external, we screen to cellphone
+				Playback(lldc_cell);
+	               		Set(CALLERID(num)=3172750001);
+		                Dial(DAHDI/G1/${FORWARD},15,rU(lldc_screen^lldc_screen));
+				Voicemail(${EXTEN},u);
+//		                Voicemail(${EXTEN},b);
+		        } else {
+				Voicemail(${EXTEN},u);
+//	                        Voicemail(${EXTEN},b);
+			}
 
 		} else {
+			Voicemail(${EXTEN},u);
+//                        Voicemail(${EXTEN},b);
+		}
+	}
 
-			Playback(eg/system/informingyousingular);
+	h => {
+		if (${EXISTS(${CALLFILENAME})}) AGI(/usr/share/asterisk/agi-bin/mail_monitor/mail.php,${CALLFILENAME},LLDCPhoneCallRecordings@lldc.net); // LLDCPhoneCallRecordings@lldc.net
+	}
+}
+
+context lldc {
+        
+        lldc => {
+s:              
+		for (x=0; ${x} < 3; x=${x} + 1) {
+                        Background(lldc_intro);
+                        WaitExten(10);
+                }
+
+                Hangup();
+        
+        }
+
+	0 => {
+		goto local-ael,2000,1;
+	}
+
+	// 1 Henry Street NOC, 2 EastGate NOC, 3 Sales, 4 Accounting, 5 (if you know your parties extension)
+
+	1 => {
+		goto local-ael,2000,1;
+	}
+
+	2 => {
+		goto local-ael,1000,1;
+	}
+
+	3 => {
+		goto local-ael,3001,1;
+	}
+
+	4 => {
+		goto local-ael,3002,1;
+	}
+
+	5 => {
+	
+	//	goto dialyourparty,prompt,1;	
+	
+		Read(request,dialyourparty,0,,3,);
+//		MailboxExists(${request});
+//		NoOp(${VMBOXEXISTSSTATUS});
+		if (${VM_INFO(${request},exists)}) {
+//		if (${VMBOXEXISTSSTATUS}) {
+			goto local-ael,${request},1;
+		} else {
+			Playback(invalid);	
+			goto lldc,lldc,1;
 
 		}
-
-		if ( ${x} < ${MSG_REPEAT} ) wait(6);
-
+// responses here can be SUCCESS or FAILED
+// on SUCCESS, dial the user! on fail, inform user, give option for directory, rense and repeat.
+		Hangup();
 	}
 
 
-	return;
+}
+
+//context jitsi {
+//	jitsi => {
+//s:
+//	Set(jitsi_attempt=0);
+//	Set(jitsi_attempt=${MATH(${jitsi_attempt}+1,i)});
+
+
+//        h => Hangup();
+//        H => Hangup();
+//       i => {
+//                Playback(invalid);
+//                goto jitsi,1;
+//        }
+
+//	}
+//}
+
+context mutara {
+	// 3177156780 will land here. 1 support 2 sales 3 other inquiries
+        mutara => {
+s:
+                for (x=0; ${x} < 3; x=${x} + 1) {
+                        Background(mutara_intro);
+                        WaitExten(10);
+                }
+
+        Set(FAXEXTEN=${EXTEN});
+        Wait(3);
+        Dial(SIP/8000&SIP/8007,30);
+        Voicemail(8000,u);
+        Voicemail(8000,b);
+        Hangup();
+
+        }
+
+	_[1-3] => {
+		dial(SIP/8000&SIP/8007,30);
+		Voicemail(8000,u);
+		Voicemail(8000,b);
+		Hangup();
+	}
+
+        h => Hangup();
+        H => Hangup();
+        i => {
+		Playback(invalid);
+		goto mutara,1;
+	}
+}
+
+context dialyourparty {
+
+	prompt => {
+
+		for (x=0; ${x} < 3; x=${x} +1) {
+			Background(dialyourparty);
+			WaitExten(10);
+		}
+
+	}
+
+	_XXXX => {
+
+//		MailboxExists(${EXTEN});
+//		NoOp(${VMBOXEXISTSSTATUS});
+
+                /*
+                        allow call to roll off to the whole (exten is unavailable, etc)
+
+                */
+                for (x=0; ${x} < 3; x=${x} + 1) {
+                        Background(vm-extension);
+                        SayDigits(${EXTEN});
+                        Background(is-curntly-unavail);
+                        Background(ext-or-zero);
+                        WaitExten(10);
+                }
+                Playback(goodbye);
+                Hangup();
+
+	}
 
 }
 
+context google-voice {
+        includes {
+                default;
+        }
+        lldcnoc@gmail.com => {
+                &fix-google-cid();
+                Answer();
+                SendDTMF(11);
+                goto lldc,lldc,1;
+                Hangup();
+        }
+        
+        h => Hangup();
+        H => Hangup();
+        i => Hangup();
 
-macro requeue() {
+        
+        _NXXXXXX => Dial(${OUTBOUND-GOOGLE}/317${EXTEN}@voice.google.com);
+        _XXXXXXXXXX => Dial(${OUTBOUND-GOOGLE}/${EXTEN}@voice.google.com);
+        _1NXXNXXXXXX => Dial(${OUTBOUND-GOOGLE}/1${EXTEN}@voice.google.com);
+        _91800NXXXXXX => Dial(${OUTBOUND-GOOGLE}/${EXTEN}@voice.google.com);
+        _91888NXXXXXX => Dial(${OUTBOUND-GOOGLE}/${EXTEN}@voice.google.com);
+        _91877NXXXXXX => Dial(${OUTBOUND-GOOGLE}/${EXTEN}@voice.google.com);
+        _91866NXXXXXX => Dial(${OUTBOUND-GOOGLE}/${EXTEN}@voice.google.com);
+}
 
-        Set(DB(hold_notify_failed/${user})=${phone},${card},${date},${org},${count},${attempts},${id});
+context incoming-motif-lldcnoc {
+
+        s => {
+
+
+	NoOp();
+	Wait(1);
+	Answer();
+	SendDTMF(1);
+        &fix-google-cid();
+        goto lldc,lldc,1;
+        }
+}
+
+context outgoing {
+
+                911 => {
+                        &definecid();
+                        Dial(DAHDI/g1/911);
+                        Dial(DAHDI/g7/911);
+                        Hangup();
+                }
+
+                _NXXXXXX => {
+                        &definecid();
+                        Dial(DAHDI/G1/317${EXTEN},,);
+//			Dial(${OUTBOUND-GOOGLE}/317${EXTEN}@voice.google.com,,); // google voice failover
+                }
+
+                _XXXXXXXXXX => {
+                        &definecid();
+
+//			if ($["${EXTEN:0:3}" = "317"]) { // add feature that will prepend a 1 to non 317 10 digit outbound calls
+			if (${EXTEN:0:3} = 317) {
+
+	                        Dial(DAHDI/G1/${EXTEN},,);
+//				Dial(${OUTBOUND-GOOGLE}/${EXTEN}@voice.google.com,,); // google voice failover
+	
+			} else {
+
+				Dial(DAHDI/G1/1${EXTEN},,);
+//				Dial(${OUTBOUND-GOOGLE}/1${EXTEN}@voice.google.com,,); // google voice failover
+
+			}
+
+                }
+
+                _1XXXXXXXXXX => {
+                        &definecid();
+                        Dial(DAHDI/G1/${EXTEN},,);
+                }
+}
+
+context speeddial {
+
+	1 => {
+	}
+
+	2 => {
+	}
+}
+
+macro lldc_screen( audio ) {
+
+        Set(GOSUB_RESULT=CONTINUE); // set default, in event that recipient hangs up
+        Read(ACCEPT,${audio},1);
+        if ("${ACCEPT}" = "-1") goto decline;
+        if ("${ACCEPT}" >= "1") {
+                goto accept;
+        } else {
+                goto decline;
+        }
+decline:
+        Set(GOSUB_RESULT=CONTINUE);
+        return;
+
+accept:
+        Set(GOSUB_RESULT=);
         return;
 }
 
-macro db_cleanup( key ) {
-        NoOp(${DB_DELETE(${key}/${CALLERID(num)})});
-	return;
-};
+macro fix-google-cid ()  {
 
-macro didmap() {
-NoOp(${CALLERID(num)});
-        switch(${CALLERID(num)}) {
-                case 2000:
-                        Set(CALLERID(all)="Evergreen Indiana" <3172021230>);
+	Set(CALLERID(name)=${CUT(CALLERID(name),@,1)});
+	if ("${CALLERID(name):0:2}" != "+1") Set(CALLERID(name)=${CALLERID(name):2});
+        Set(CALLERID(number)=${CALLERID(name)});	
+	return;
+
+}
+
+macro definecid () {
+
+	switch(${CALLERID(number)}) {
+
+                case 1003:
+                        Set(didout=3172750013);
                         break;
+                case 1004:
+                        Set(didout=3172750004);
+                        break;
+                case 1005:
+                        Set(didout=3172750020);
+                        break;
+                case 2002:
+                        Set(didout=3172750016);
+                        break;
+                case 2004:
+                        Set(didout=3172750018);
+                        break;
+                case 2005:
+                        Set(didout=3172750019);
+                        break;
+                case 3001:
+                        Set(didout=3172750021);
+                        break;
+                case 3002:
+                        Set(didout=3172750022);
+                        break;
+                case 3004:
+                        Set(didout=3172750024);
+                        break;
+                case 3005:
+                        Set(didout=3172750025);
+                        break;
+                case 3006:
+                        Set(didout=3172750026);
+                        break;
+		case 3007:
+  	             	Set(didout=3172750005);
+	                break;
+		case 3107:
+			Set(didout=3177156787);
+			break;
+                case 7002:
+                        Set(didout=31772750049);
+                        break;
+                case 7003:
+                        Set(didout=31772750049);
+                        break;
+                case 7004:
+                        Set(didout=31772750049);
+                        break;
+		case 8000:
+			Set(didout=3177156780);
+			break;
                 default:
-                        Set(CALLERID(all)="Evergreen Indiana" <3172021230>);
-        };
+			Set(didout=3172750001);
+                        break;
+	}
 
-        return;
+	Set(CALLERID(number)=${didout});
+	return;
 
-// available DID's
-// 2192320137
-// 2604403355
-// 3172021218
-// 3172021219
-// 3172021220
-// 3172021221
-// 3172021222
-// 3172021223
-// 3172021224
-// 3172021225
-// 3172021226
-// 3172021227
-// 3172021228
-// 3172021229
-// 3172021230
-// 3172021231
-// 3172021232
-// 3172021233
-// 3172021234
-// 3172021235
-// 5745382030
-// 7655885982
-};
+}
