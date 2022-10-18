@@ -11,8 +11,8 @@
     selinux: false
     asterisk_user: asterisk
     asterisk_group: asterisk
-    dahdi_linux_version: v2.11.1
-    dahdi_tools_version: v2.11.1
+    dahdi_linux_version: v3.1.0
+    dahdi_tools_version: v3.1.0
     libpri_version: 1.4.15
     starpy_version: 1.0.3
     jansson_version: v2.14
